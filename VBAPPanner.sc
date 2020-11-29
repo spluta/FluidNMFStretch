@@ -1,10 +1,10 @@
 VBAPPlayback {
-	var <>group, <>folder, <>vbapPoints, <>panBus, <speakerArray, <>location, <>azi, <>ele, files, synths, vbapBuf, bufs, <>soundFile, <>sliceFrames;
+	var <>group, <>folder, <>vbapPoints, <>vbapSpeakerArray, <>panBus, <>location, <>azi, <>ele, files, synths, vbapBuf, bufs, <>soundFile, <>sliceFrames;
 
 	*initClass {
 		StartUp.add {
 
-			SynthDef("vbapSoundObject", {
+			SynthDef("vbapSoundObject4", {
 				var aziNoise, eleNoise, out, env, azi, ele;
 
 				eleNoise = LFNoise2.kr(1/\lag.kr(24)).range(0,9);
@@ -20,8 +20,8 @@ VBAPPlayback {
 		}
 	}
 
-	*new {arg group, folder, vbapPoints;
-		^super.new.group_(group).folder_(folder).vbapPoints_(vbapPoints).init;
+	*new {arg group, folder, vbapPoints, vbapSpeakerArray;
+		^super.new.group_(group).folder_(folder).vbapPoints_(vbapPoints).vbapSpeakerArray_(vbapSpeakerArray).init;
 	}
 
 	init {
@@ -39,20 +39,40 @@ VBAPPlayback {
 
 		azi = List.fill(files.size, {0});
 		ele = List.fill(files.size, {0});
-		this.setQuad;  //change this later
+
+		if(vbapSpeakerArray!=nil){
+			vbapBuf = vbapSpeakerArray.loadToBuffer(group.server);
+		}{
+			"no speaker array provided. setting to Quad".postln;
+			this.setQuad;
+		};
+		SynthDef("vbapSoundObject"++vbapSpeakerArray.numSpeakers, {
+			var aziNoise, eleNoise, out, env, azi, ele;
+
+			eleNoise = LFNoise1.kr(1/\noiseLag.kr(24)).range(0,9);
+			aziNoise = LFNoise1.kr(1/\noiseLag.kr).range(-9,9).poll;
+			out = DiskIn.ar(1, \buf.kr, 0);
+
+			out = VBAP.ar(vbapSpeakerArray.numSpeakers, out, \vbapBuf.kr, (\azi.kr(0, \lag.kr)+aziNoise), (\ele.kr(0, \lag.kr)+eleNoise));
+
+			env = EnvGen.kr(Env.asr(0.01, 1, 0.01), \gate.kr(1), doneAction:2);
+
+			Out.ar(\outBus.kr(0), out*env*\mul.kr(0));
+		}).send(group.server);
 	}
 
 	setQuad {
-		speakerArray = VBAPSpeakerArray.new(2, [-45, 45, -135, 135]);
-		vbapBuf = speakerArray.loadToBuffer(group.server);
+		vbapSpeakerArray = VBAPSpeakerArray.new(2, [-45, 45, -135, 135]);
+		vbapBuf = vbapSpeakerArray.loadToBuffer(group.server);
 	}
 
-	speakerArray_{|sa|
-		speakerArray = sa;
-		vbapBuf = speakerArray.loadToBuffer(group.server);
+	setVBAPSpeakerArray {|sa|
+		vbapSpeakerArray = sa;
+		vbapBuf = vbapSpeakerArray.loadToBuffer(group.server);
 	}
 
 	quePlayback {|startFrame, panLocations|
+		var mul;
 		{
 			panLocations.postln;
 			group.set(\gate, 0);
@@ -68,9 +88,11 @@ VBAPPlayback {
 
 				panLoc = vbapPoints.panPoints[panLocations[i.asSymbol].asInteger];
 				Main.elapsedTime.postln;
-				Synth.newPaused("vbapSoundObject", [\vbapBuf, vbapBuf, \azi, panLoc[0], \ele, panLoc[1], \lag, 0.1, \buf, bufs[i]]);
-			});
-		}.fork;
+				if(i==0){mul=1}{mul=0};
+				Synth.newPaused("vbapSoundObject"++vbapSpeakerArray.numSpeakers, [\vbapBuf, vbapBuf, \azi, panLoc[0], \ele, panLoc[1], \lag, 0.1, \noiseLag, 20, \buf, bufs[i], \mul, 1]);
+
+			 });
+		 }.fork;
 	}
 
 	startPlayback{
@@ -86,7 +108,7 @@ VBAPPlayback {
 		files.size.do{|i|
 			var panLoc;
 			panLoc = vbapPoints.panPoints[panLocations[i.asSymbol].asInteger];
-			//synths.postln;
+			panLoc.postln;
 			synths[i].set(\azi, panLoc[0], \ele, panLoc[1], \lag, lag);
 		};
 	}

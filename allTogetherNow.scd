@@ -8,7 +8,7 @@ f = FluidNMFStretch(s, "/Volumes/StretchFiles/AdaggietoSweden/AdagiettoHardingSw
 
 f = FluidNMFStretch(s, "/Volumes/Samsung_T5/Mahler3OhMench/Mahler3.wav")
 
-f = FluidNMFStretch(s, "/Volumes/StretchFiles/NeverReallyOver/NeverReallyOver.wav")
+f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav")
 
 //makes the necessary subfolders to hold the NMF Channels and the MFCC Channels
 f.makeFolders;
@@ -17,21 +17,19 @@ f.makeFolders;
 f.nmf(50);  //this may take a while!!!
 
 //time stretches each of the N separate NMF channels and places them in the user specified folder inside the Main folder. This folder will have as many folders as there are channels in the original file
-//the stretch algorithms are run in non-real-time, so it will run all of the stretches at once
-f.stretch(100, "Stretch100_Ness8_Over2")
+//the stretch algorithms are run in non-real-time, so it will run all of the stretches at once (so, this may take over your computer for a while)
 
-//allows the use of experimental algorithms for time stretching which use different bin sizes for higher pitched and lower pitched NMF channels. The algorithm relies upon a spectral centroid analysis of each NMF channel to decide which are higher and lower in pitch, so getCentroid must be run before variWindowStretch
-f.getCentroid  //analyses the channels in parallel
-f.saveCentroid  //save the
+//the default is to have a maximum FFT size of 65536, 9 different separations of
+//see the TimeStretch help file for more informatio
+f.stretch(100, "Stretch100", 65536, 9, 2);
 
+//the user can also supply an array of overlap values, one per frequency band, so that each band of the frequency spectrum has its own overlap setting
+//see the TimeStretch help file for more information
+f.stretch(100, "Stretch100_234", 65536, 9, [2,2,2,2,2,2,2,4,4])
 
+Panning
 
-//centroids can also be saved and reloaded
-f.loadCentroid
-f.variWindowStretch(24, "VariStretch24X",0.05, 2)
-
-
-//the panning algorithm of FluidNMFStretch relies upon an MFCC analysis of the NMF channels, grouping the channels into clumps
+//the VBAP panning algorithm of FluidNMFStretch relies upon an MFCC analysis of the NMF channels, grouping the channels into clumps, which will change over time
 
 //get MFCC does the MFCC analysis on each NMF channel, saving the analysis to the ChanNFile folders inside the mfcc folder
 //at this point, these need to happen one channel at a time
@@ -61,17 +59,21 @@ f.createClusters
 
 
 f.saveClusterData //save these for future use
-f.loadClusterData //and next time we can load them
 
 //PLAYBACK
 //now that the data has all been saved, we can load an run this at any point
 //run each line independently
 s.reboot
-f = FluidNMFStretch(s, "/Volumes/Samsung_T5/AdaggietoSweden/AdagiettoHardingSweden.wav")
-f.loadClusterData;
-f.setStretchFolder("VariStretchDispAlg2C"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
-f.makePanner;
+f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav")
+(f.loadClusterData;
+f.setStretchFolder("Stretch100"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
+
+//give
+~vbapArray = VBAPSpeakerArray.new(3, [[-30, 0], [30, 0], [-90, 0], [90, 0], [-150, 0], [150, 0], [-45, 30], [45, 30], [-135, 30], [135, 30]]);
+f.makePanner(~vbapArray);)
 f.playAtSlice(50);
+
+~vbapArray.numSpeakers
 
 //todo!!!
 deal with panning

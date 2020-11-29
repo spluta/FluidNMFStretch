@@ -146,8 +146,10 @@ FluidNMFStretch {
 			}
 	}.fork}
 
-	makePanner {
+	makePanner {|vbapSpeakerArray|
 		var map, temp;
+
+		//right now there are 10 destination points per side. should this be changeable?
 
 		vbapMaps = List.fill(clusterData.size, {|chan|
 			temp = List.newClear(0);
@@ -161,7 +163,7 @@ FluidNMFStretch {
 
 		vbapPanPoints = [VBAPPanPoints(-1), VBAPPanPoints(1)];
 		vbapPlayback = List.fill(2, {|i|
-			VBAPPlayback(Group.tail(server), PathName(stretchFolder++"/""Chan"++i++"/"), vbapPanPoints[i])
+			VBAPPlayback(Group.tail(server), PathName(stretchFolder++"/""Chan"++i++"/"), vbapPanPoints[i], vbapSpeakerArray.postln)
 		});
 	}
 
@@ -210,81 +212,6 @@ FluidNMFStretch {
 			}).play
 		}
 	}
-
-	variWindowStretch {|durMult=12, stretchFolderIn="Stretch", maxDispersion=0, variAlgorithm=1, splitPoints, channels|
-		var inFiles, x, chanFolders, folder, tupletDict, fftSize;
-		if(splitPoints==nil){splitPoints = [700,1200, 1700,2400,3500]};
-
-		if(centroids[0]==nil){"calculate centroids first"}{
-			{
-				stretchFolder = writeDir++stretchFolderIn++"/";
-				("mkdir "++stretchFolder).systemCmd;
-				numChannels.do{|i|
-					("mkdir "++stretchFolder++"/Chan"++i++"/").systemCmd;
-				};
-
-				chanFolders = PathName(nmfFolder).folders;
-
-				if(channels!=nil){chanFolders = chanFolders.select{|chan, i| channels.indexOf(i)!=nil}};
-				chanFolders.postln;
-
-				chanFolders.do{|folder, chanNum|
-					var inFiles;
-
-					inFiles = folder.files;
-
-					inFiles.size.postln;
-					//NRT_TimeStretch.new;
-					inFiles.do{|inFile,i|
-						var outFile, centroid, temp, frameTuplet, disp;
-
-						centroid=centroids[chanNum][i];
-						disp = maxDispersion;
-
-						temp = splitPoints.collect{|item| centroid>item};
-						temp.postln;
-						temp = temp.asInteger.sum;
-						switch(variAlgorithm,
-							0, {
-								switch(temp,
-									0, {fftSize = 8192*2; frameTuplet = 2},
-									1, {fftSize = 8192*2; frameTuplet = 5},
-									2, {fftSize = 8192; frameTuplet = 2},
-									3, {fftSize = 8192; frameTuplet = 5},
-									4, {fftSize = 8192; frameTuplet = 3},
-									5, {fftSize = 4096; frameTuplet = 2}
-								);
-							},
-							1, {
-								switch(temp,
-									0, {fftSize = 8192; frameTuplet = 2},
-									1, {fftSize = 8192; frameTuplet = 2},
-									2, {fftSize = 8192; frameTuplet = 2},
-									3, {fftSize = 8192; frameTuplet = 2},
-									4, {fftSize = 4096; frameTuplet = 5},
-									5, {fftSize = 4096; frameTuplet = 3}
-								);
-							},
-							2, {
-								switch(temp,
-									0, {fftSize = 8192*2; frameTuplet = 2},
-									1, {fftSize = 8192*2; frameTuplet = [2,5].choose},
-									2, {fftSize = 8192; frameTuplet = [2,3].choose},
-									3, {fftSize = 8192; frameTuplet = [2,5].choose},
-									4, {fftSize = 4096; frameTuplet = 2; disp = maxDispersion/2},
-									5, {fftSize = 4096; frameTuplet = 2; disp = maxDispersion/2}
-								);
-							}
-
-						);
-						[centroid, temp, fftSize, frameTuplet].postln;
-						outFile = stretchFolder++folder.folderName++"/"++(inFile.fileName);
-						TimeStretch.stretchNRT(inFile.fullPath, outFile, durMult, fftSize, frameTuplet, rrand(0,disp));
-					}
-				}
-		}.fork}
-	}
-
 
 	loadFileDataSets {
 		fileDataSets.do{|item| item.do{|item2|item2.free}};
@@ -456,7 +383,7 @@ FluidNMFStretch {
 		oscy = OSCFunc({|msg|
 			msg.postln;
 			if(msg[2]==chanNum){
-				"Ended!".postln;
+				"Made It! Don't listen to those errors".postln;
 				leBeuf.free;
 				counter = counter+1;
 				counter.postln;
@@ -469,6 +396,7 @@ FluidNMFStretch {
 					oscy.free;
 
 					//save and set
+					"save file data sets".postln;
 					this.saveFileDataSets(chanNum);
 				}
 			}
