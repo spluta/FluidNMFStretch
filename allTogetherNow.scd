@@ -25,7 +25,7 @@ f.stretch(100, "Stretch100", 65536, 9, 2);
 
 //the user can also supply an array of overlap values, one per frequency band, so that each band of the frequency spectrum has its own overlap setting
 //see the TimeStretch help file for more information
-f.stretch(100, "Stretch100_234", 65536, 9, [2,2,2,2,2,2,2,4,4])
+f.stretch(100, "Stretch100_24", 65536, 9, [2,2,2,2,2,2,2,4,4])
 
 Panning
 
@@ -71,7 +71,7 @@ f.setStretchFolder("Stretch100"); //choose the correct Stretch folder inside the
 //give
 ~vbapArray = VBAPSpeakerArray.new(3, [[-30, 0], [30, 0], [-90, 0], [90, 0], [-150, 0], [150, 0], [-45, 30], [45, 30], [-135, 30], [135, 30]]);
 f.makePanner(~vbapArray);)
-f.playAtSlice(50);
+f.playAtSlice(50, nil, 0);
 
 ~vbapArray.numSpeakers
 

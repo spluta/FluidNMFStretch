@@ -163,7 +163,7 @@ FluidNMFStretch {
 
 		vbapPanPoints = [VBAPPanPoints(-1), VBAPPanPoints(1)];
 		vbapPlayback = List.fill(2, {|i|
-			VBAPPlayback(Group.tail(server), PathName(stretchFolder++"/""Chan"++i++"/"), vbapPanPoints[i], vbapSpeakerArray.postln)
+			VBAPPlayback(Group.tail(server), PathName(stretchFolder++"/""Chan"++i++"/"), vbapPanPoints[i], vbapSpeakerArray)
 		});
 	}
 
@@ -177,7 +177,7 @@ FluidNMFStretch {
 		vbapMaps = Object.readArchive(fileName);
 	}
 
-	playAtSlice {|sliceNum, chan|
+	playAtSlice {|sliceNum, chan, outBus = 0|
 		var framesPerSlice = vbapPlayback[0].soundFile.numFrames/clusterData[0].size;
 		var waitTime = vbapPlayback[0].soundFile.duration/clusterData[0].size;
 
@@ -190,7 +190,7 @@ FluidNMFStretch {
 				var tempDict = ();
 				var vbap = vbapPlayback[i];
 				clusterData[i][sliceNum].keys.do{|key| clusterData[i][sliceNum][key].do{|item| tempDict.put(item.asInteger.asSymbol, key)}};
-				vbap.quePlayback(sliceNum*framesPerSlice, tempDict)
+				vbap.quePlayback(sliceNum*framesPerSlice, tempDict, outBus)
 			};
 			Routine({
 				1.wait;
@@ -204,10 +204,12 @@ FluidNMFStretch {
 					chan.do{|i|
 						var tempDict = ();
 						var vbap = vbapPlayback[i];
+						clusterData[i][sliceNum].keys.postln;
 						clusterData[i][sliceNum].keys.do{|key| clusterData[i][sliceNum][key].do{|item| tempDict.put(item.asInteger.asSymbol, key)}};
 						vbap.setPanning(tempDict, waitTime.postln);
 					};
-					waitTime.wait;
+					//waitTime.wait;
+					10.wait;
 				};
 			}).play
 		}
