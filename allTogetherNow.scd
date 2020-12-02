@@ -55,7 +55,7 @@ f.saveFrameDataSetsFromFileChannel(1)
 //on each frame, the algorithm clusters the N time-stretched NMF channels into timbrel similarity
 //to do this, we must create clusters
 f.loadFrameDataSets
-f.createClusters
+f.createClusters(10)
 
 
 f.saveClusterData //save these for future use
@@ -80,5 +80,5 @@ deal with panning
 --isolating groups
 --moving pan points
 
-
+f.clusterData[0].do{|item| "".postln;item.keysDo{|key| [key, item[key]].postln;}}
 

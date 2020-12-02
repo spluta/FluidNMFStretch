@@ -1,4 +1,4 @@
-FluidEqualSlicer {
+/*FluidEqualSlicer {
 	var <>index;
 
 	slice {|buffer, indexIn, chunkSize = 44100|
@@ -20,7 +20,7 @@ FluidEqualSlicer {
 			}
 		};
 	}
-}
+}*/
 
 FluidNMFStretch {
 	var <>server, <>fileIn, <>writeDir;
@@ -43,7 +43,7 @@ FluidNMFStretch {
 			frameDataSets = List.newClear(numChannels);
 			clusterData = List.newClear(numChannels);
 			centroids = List.newClear(numChannels);
-			kmeans = FluidKMeans.new(server);
+
 			//this.clearDataSets;
 			//TimeStretch.new;
 		};
@@ -156,6 +156,7 @@ FluidNMFStretch {
 			clusterData[chan].size.do{|i|
 				map = ();
 				10.do{|i| map.put(i.asSymbol, i)};
+				map.postln;
 				temp.add(map);
 			};
 			temp
@@ -189,6 +190,7 @@ FluidNMFStretch {
 			chan.do{|i|
 				var tempDict = ();
 				var vbap = vbapPlayback[i];
+
 				clusterData[i][sliceNum].keys.do{|key| clusterData[i][sliceNum][key].do{|item| tempDict.put(item.asInteger.asSymbol, key)}};
 				vbap.quePlayback(sliceNum*framesPerSlice, tempDict, outBus)
 			};
@@ -205,11 +207,17 @@ FluidNMFStretch {
 						var tempDict = ();
 						var vbap = vbapPlayback[i];
 						clusterData[i][sliceNum].keys.postln;
-						clusterData[i][sliceNum].keys.do{|key| clusterData[i][sliceNum][key].do{|item| tempDict.put(item.asInteger.asSymbol, key)}};
+						clusterData[i][sliceNum].keys.do{|key|
+							clusterData[i][sliceNum][key].do{|item|
+								tempDict.put(item.asInteger.asSymbol, key);
+								tempDict.postln;
+							}
+						};
+						tempDict.postln;
 						vbap.setPanning(tempDict, waitTime.postln);
 					};
-					//waitTime.wait;
-					10.wait;
+					waitTime.wait;
+					//10.wait;
 				};
 			}).play
 		}
@@ -277,6 +285,8 @@ FluidNMFStretch {
 
 	createClusterChan {|chanNum, numClusters=10|
 		var frameData, temp;
+
+		kmeans = FluidKMeans.new(server, numClusters);
 
 		frameData = frameDataSets[chanNum];
 		if(frameData==nil){"load frame data first!".postln;}
