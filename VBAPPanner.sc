@@ -268,7 +268,7 @@ VBAPPlayback {
 				outputFilePath: outFile.standardizePath,
 				inputFilePath: inFile,
 				sampleRate: soundFile.sampleRate,
-				headerFormat: "caf",
+				headerFormat: "W64",
 				sampleFormat: "int24",
 				options: group.server.options,
 				duration: soundFile.duration+3,

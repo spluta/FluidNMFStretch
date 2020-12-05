@@ -25,7 +25,7 @@
 FluidNMFStretch {
 	var <>server, <>fileIn, <>writeDir;
 	var <>fileDataSets, <>frameDataSets, numChannels, <>nmfFolder, <>mfccFolder, <>stretchFolder;
-	var sf, <>clusterData, <>kmeans, <>centroids, <>vbapPanPoints, <>vbapPlayback, <>vbapMaps;
+	var sf, <>clusterData, <>kmeans, <>centroids, <>vbapPanPoints, <>vbapPlayback, <>vbapMaps, nrtMergeCounter;
 
 	*new {arg server, fileIn, writeDir;
 		^super.new.server_(server).fileIn_(fileIn).writeDir_(writeDir).init;
@@ -65,8 +65,6 @@ FluidNMFStretch {
 		numChannels.do{|i|
 			("mkdir "++nmfFolder++"/Chan"++i++"/").systemCmd;
 			//("mkdir "++stretchFolder++"/Chan"++i++"/").systemCmd;
-			("mkdir "++mfccFolder++"/Chan"++i++"File/").systemCmd;
-			("mkdir "++mfccFolder++"/Chan"++i++"Frame/").systemCmd;
 		};
 
 	}
@@ -120,19 +118,15 @@ FluidNMFStretch {
 		//}.fork
 	}
 
-/*	makeFolderToCaf {|folder|
-		var files, bufs;
-
-		files = folder.files.select{|file| file.postln;(file.extension=="wav")};
-		files.addAll(folder.files.select{|file| file.postln;(file.extension=="aif")});
-	}*/
-
 	panNRT {|inFiles, outFile|
 		var lr =  ["_L", "_R"];
 		var tempDict = ();
 		//var vbap = vbapPlayback[i];
+
+		nrtMergeCounter = 0;
+
 		if(clusterData==nil){"load cluster data and make panner first"}{
-			vbapPlayback.do{|singlePlayback, i| singlePlayback.panNRT(clusterData[i], inFiles[i], stretchFolder++"/"++outFile++lr[i]++".caf", lr[i])}
+			vbapPlayback.do{|singlePlayback, i| singlePlayback.panNRT(clusterData[i], inFiles[i], stretchFolder++"/"++outFile++lr[i]++".w64", lr[i])}
 		};
 	}
 
@@ -237,40 +231,40 @@ FluidNMFStretch {
 		}
 	}
 
-	loadFileDataSets {
+	loadFileDataSets {|chunkLength|
 		fileDataSets.do{|item| item.do{|item2|item2.free}};
 		numChannels.do{|chan|
-			this.loadFileDataSetsChan(chan);
+			this.loadFileDataSetsChan(chan, chunkLength);
 		}
 	}
 
-	loadFileDataSetsChan {|chanNum|
+	loadFileDataSetsChan {|chanNum, chunkLength|
 		var temp = List.newClear(0);
 		fileDataSets[chanNum].do{|item|item.free};
 		//fileDataSets = List.fill(numChannels, {List.newClear(0)});
 		//numChannels.do{|i|
-		PathName(mfccFolder++"/Chan"++chanNum++"File/").files.do{|file, i|
+		PathName(mfccFolder++chunkLength++"/"++"/Chan"++chanNum++"File/").files.do{|file, i|
 			temp.add(FluidDataSet(server, file.fileNameWithoutExtension).read(file.fullPath))
 			//}
 		};
 		fileDataSets.put(chanNum, temp);
 	}
 
-	loadFrameDataSets {
+	loadFrameDataSets {|chunkLength|
 		frameDataSets.do{|item| item.do{|item2|item2.free}};
 		numChannels.do{|chan|
-			this.loadFrameDataSetsChan(chan);
+			this.loadFrameDataSetsChan(chan, chunkLength);
 		}
 	}
 
-	loadFrameDataSetsChan {|chanNum|
+	loadFrameDataSetsChan {|chanNum, chunkLength|
 		var temp = List.newClear(0);
 
 		frameDataSets[chanNum].do{|item|item.free};
 
-		PathName(mfccFolder++"/Chan"++chanNum++"Frame/").files.size.postln;
+		PathName(mfccFolder++chunkLength++"/"++"/Chan"++chanNum++"Frame/").files.size.postln;
 
-		PathName(mfccFolder++"/Chan"++chanNum++"Frame/").files.do{|file, i|
+		PathName(mfccFolder++chunkLength++"/"++"/Chan"++chanNum++"Frame/").files.do{|file, i|
 			//file.postln;
 			temp.add(FluidDataSet(server, chanNum.asString++"-"++file.fileNameWithoutExtension).read(file.fullPath))
 		};
@@ -353,11 +347,19 @@ FluidNMFStretch {
 		}
 	}
 
-	getMFCCChannel {|chanNum, chunkLength = 88200|
+	getMFCCChannel {|chanNum, chunkLength = 88200, counterStart = 0|
 		var doit;
 		var files, counter, oscy, folder, leBeuf, countTo;
 
 		"getMFCCChannel ".post; chanNum.postln;
+
+		if((mfccFolder++chunkLength.asString++"/").isFolder!=true){
+			("mkdir "++mfccFolder++chunkLength.asString++"/").systemCmd;
+			numChannels.do{|i|
+				("mkdir "++mfccFolder++chunkLength.asString++"/Chan"++i++"File/").systemCmd;
+				("mkdir "++mfccFolder++chunkLength.asString++"/Chan"++i++"Frame/").systemCmd;
+			};
+		};
 
 		folder = nmfFolder++"Chan"++chanNum++"/";
 		folder.postln;
@@ -403,14 +405,20 @@ FluidNMFStretch {
 			})
 		};
 
-		counter = 0;
+		counter = counterStart;
 		doit.value(files[counter], counter);
 
 		oscy = OSCFunc({|msg|
 			msg.postln;
 			if(msg[2]==chanNum){
+				var labelNum;
 				"Made It! Don't listen to those errors".postln;
 				leBeuf.free;
+
+				labelNum = counter.asString;
+				(4-labelNum.size).do{labelNum=labelNum.insert(0, "0")};
+				fileDataSets[chanNum][counter].write(mfccFolder++chunkLength.asString++"/"++"Chan"++chanNum++"File/"++labelNum++".json");
+
 				counter = counter+1;
 				counter.postln;
 				if(files.size>counter) {
@@ -423,79 +431,18 @@ FluidNMFStretch {
 
 					//save and set
 					"save file data sets".postln;
-					this.saveFileDataSets(chanNum);
+					//this.saveFileDataSets(chanNum, chunkLength);
 				}
 			}
 		},'/tr')
 	}
 
-	saveCentroid {|fileName = "centroids"|
-		fileName = writeDir++fileName;
-		centroids.writeArchive(fileName);
-	}
-
-	loadCentroid {|fileName = "centroids"|
-		fileName = writeDir++fileName;
-		centroids = Object.readArchive(fileName);
-	}
-
-	getCentroid {
-		var numChanFolders = PathName(nmfFolder).folders.size;
-		centroids = List.newClear(numChanFolders);
-		numChanFolders.do{|chanNum|
-			this.getCentroidChannel(chanNum);
-		}
-	}
-
-	getCentroidChannel {|chanNum|
-		var files, centroidChan, folder, counter = 0;
-
-		"getCentroid ".post; chanNum.postln;
-
-		folder = nmfFolder++"Chan"++chanNum++"/";
-		folder.postln;
-
-		files = PathName(folder).files;
-		files.size.postln;
-		centroidChan = List.newClear(files.size);
-
-		Routine({
-			files.do{|file, i|
-				var buffer, ssBuf, statsBuf;
-				buffer = Buffer.read(server, file.fullPath, action:{|buf|
-					ssBuf = Buffer(server);
-					statsBuf = Buffer(server);
-					FluidBufSpectralShape.process(server, buf, features:ssBuf, action:{|features|
-						FluidBufStats.process(server, features, 0, -1, 0, 1, statsBuf, action:{|stats|
-							stats.loadToFloatArray(action:{|array|
-								[i, array[0]].postln;
-								centroidChan.put(i, array[0]);
-								features.free;
-								stats.free;
-								buf.free;
-								counter = counter+1;
-								if(counter==files.size){
-									"done".postln;
-									centroids.put(chanNum, centroidChan);
-								};
-							})
-						})
-					});
-				});
-				server.sync;
-				0.5.wait;
-			};
-			//server.sync;
-
-		}).play
-	}
-
-	saveFileDataSets {|chanNum|
+	saveFileDataSets {|chanNum, chunkLength|
 		fileDataSets[chanNum].do{|item, i|
 			var labelNum;
 			labelNum = i.asString;
 			(4-labelNum.size).do{labelNum=labelNum.insert(0, "0")};
-			item.write(mfccFolder++"Chan"++chanNum++"File/"++labelNum++".json")
+			item.write(mfccFolder++chunkLength.asString++"/"++"Chan"++chanNum++"File/"++labelNum++".json")
 		};
 	}
 
@@ -503,7 +450,7 @@ FluidNMFStretch {
 		numChannels.do{|i| this.saveFrameDataSetsFromFileChannel(i)}
 	}
 
-	saveFrameDataSetsFromFileChannel {|chanNum|
+	saveFrameDataSetsFromFileChannel {|chanNum, chunkLength|
 		fileDataSets[chanNum][0].size({|val|
 			val.postln;
 			frameDataSets.put(chanNum, Array.fill(val.asInteger, {|i| FluidDataSet.new(server, ("rotated"++chanNum++"_"++i).asSymbol)}));
@@ -541,7 +488,7 @@ FluidNMFStretch {
 						0.05.wait;
 						labelNum = i.asString;
 						(4-labelNum.size).do{labelNum=labelNum.insert(0, "0")};
-						item.write(mfccFolder++"Chan"++chanNum++"Frame/"++labelNum++".json")
+						item.write(mfccFolder++chunkLength++"/"++"Chan"++chanNum++"Frame/"++labelNum++".json")
 					};
 				}.fork
 			}).play;

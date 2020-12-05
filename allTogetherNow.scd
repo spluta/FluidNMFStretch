@@ -36,8 +36,8 @@ Panning
 //it will say "Buffer UGen: no buffer data". THIS IS A LIE!
 //it will say "Processing Cancelled" but that just means it is done
 
-f.getMFCCChannel(0)
-f.getMFCCChannel(1)
+f.getMFCCChannel(0, (44100/5).asInteger)
+f.getMFCCChannel(1, (44100/5).asInteger)
 
 //f.getMFCCChannelParallel(1, 88200, 5)
 
@@ -49,16 +49,16 @@ f.loadFileDataSets
 f.saveFrameDataSetsFromFile
 
 //you may need to do these one channel at a time
-f.saveFrameDataSetsFromFileChannel(0)
-f.saveFrameDataSetsFromFileChannel(1)
+f.saveFrameDataSetsFromFileChannel(0, (44100/5).asInteger)
+f.saveFrameDataSetsFromFileChannel(1, (44100/5).asInteger)
 
 //on each frame, the algorithm clusters the N time-stretched NMF channels into timbrel similarity
 to do this, we must create clusters
 f.loadFrameDataSets
-f.createClusters(10)
+f.createClusters(10, (44100/5).asInteger)
 
 
-f.saveClusterData //save these for future use
+f.saveClusterData("clusters88200") //save these for future use - probably should add the mfcc chunk size to the file
 
 //PLAYBACK
 //now that the data has all been saved, we can load an run this at any point
@@ -68,7 +68,7 @@ s.options.numOutputBusChannels_(32);
 
 s.reboot
 f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav");
-(f.loadClusterData;
+(f.loadClusterData("clusters88200");
 f.setStretchFolder("Stretch100_24"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
 
 //give
@@ -89,5 +89,8 @@ deal with panning
 --isolating groups
 --moving pan points
 
-f.clusterData[0].do{|item, i| "".postln; i.postln; item.keysDo{|key| [key, item[key]].postln;}}
+f.clusterData[0].do{|item, i| "".postln; i.postln; item.keysDo{|key|
+	if(item[key].indexOfEqual("0002")!=nil){key.postln;}
+
+}}
 
