@@ -53,7 +53,7 @@ f.saveFrameDataSetsFromFileChannel(0)
 f.saveFrameDataSetsFromFileChannel(1)
 
 //on each frame, the algorithm clusters the N time-stretched NMF channels into timbrel similarity
-//to do this, we must create clusters
+to do this, we must create clusters
 f.loadFrameDataSets
 f.createClusters(10)
 
@@ -63,15 +63,24 @@ f.saveClusterData //save these for future use
 //PLAYBACK
 //now that the data has all been saved, we can load an run this at any point
 //run each line independently
+
+s.options.numOutputBusChannels_(32);
+
 s.reboot
-f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav")
+f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav");
 (f.loadClusterData;
-f.setStretchFolder("Stretch100"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
+f.setStretchFolder("Stretch100_24"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
 
 //give
 ~vbapArray = VBAPSpeakerArray.new(3, [[-30, 0], [30, 0], [-90, 0], [90, 0], [-150, 0], [150, 0], [-45, 30], [45, 30], [-135, 30], [135, 30]]);
 f.makePanner(~vbapArray);)
-f.playAtSlice(50, nil, 0);
+
+
+f.playAtSlice(50, nil, 20);
+
+f.panNRT(["/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_L.caf", "/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_R.caf"], "version1")
+
+f.folder
 
 ~vbapArray.numSpeakers
 
@@ -80,5 +89,5 @@ deal with panning
 --isolating groups
 --moving pan points
 
-f.clusterData[0].do{|item| "".postln;item.keysDo{|key| [key, item[key]].postln;}}
+f.clusterData[0].do{|item, i| "".postln; i.postln; item.keysDo{|key| [key, item[key]].postln;}}
 

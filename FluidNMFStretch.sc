@@ -120,6 +120,22 @@ FluidNMFStretch {
 		//}.fork
 	}
 
+/*	makeFolderToCaf {|folder|
+		var files, bufs;
+
+		files = folder.files.select{|file| file.postln;(file.extension=="wav")};
+		files.addAll(folder.files.select{|file| file.postln;(file.extension=="aif")});
+	}*/
+
+	panNRT {|inFiles, outFile|
+		var lr =  ["_L", "_R"];
+		var tempDict = ();
+		//var vbap = vbapPlayback[i];
+		if(clusterData==nil){"load cluster data and make panner first"}{
+			vbapPlayback.do{|singlePlayback, i| singlePlayback.panNRT(clusterData[i], inFiles[i], stretchFolder++"/"++outFile++lr[i]++".caf", lr[i])}
+		};
+	}
+
 	stretch {|durMult=12, stretchFolderIn="Stretch", fftMax=65536, numSplits=9, overlaps=2|
 		var inFiles, x, chanFolders, folder;
 		//[folderOrFile, durMult, stretchFolder].postln;
@@ -137,7 +153,6 @@ FluidNMFStretch {
 				var inFiles;
 
 				inFiles = folder.files;
-				inFiles.size.postln;
 				inFiles.do{|inFile,i|
 					var outFile;
 					outFile = stretchFolder++folder.folderName++"/"++(inFile.fileName);
@@ -151,7 +166,7 @@ FluidNMFStretch {
 
 		//right now there are 10 destination points per side. should this be changeable?
 
-		vbapMaps = List.fill(clusterData.size, {|chan|
+/*		vbapMaps = List.fill(clusterData.size, {|chan|
 			temp = List.newClear(0);
 			clusterData[chan].size.do{|i|
 				map = ();
@@ -160,7 +175,7 @@ FluidNMFStretch {
 				temp.add(map);
 			};
 			temp
-		});
+		});*/
 
 		vbapPanPoints = [VBAPPanPoints(-1), VBAPPanPoints(1)];
 		vbapPlayback = List.fill(2, {|i|
@@ -192,6 +207,7 @@ FluidNMFStretch {
 				var vbap = vbapPlayback[i];
 
 				clusterData[i][sliceNum].keys.do{|key| clusterData[i][sliceNum][key].do{|item| tempDict.put(item.asInteger.asSymbol, key)}};
+
 				vbap.quePlayback(sliceNum*framesPerSlice, tempDict, outBus)
 			};
 			Routine({
@@ -206,11 +222,9 @@ FluidNMFStretch {
 					chan.do{|i|
 						var tempDict = ();
 						var vbap = vbapPlayback[i];
-						clusterData[i][sliceNum].keys.postln;
 						clusterData[i][sliceNum].keys.do{|key|
 							clusterData[i][sliceNum][key].do{|item|
 								tempDict.put(item.asInteger.asSymbol, key);
-								tempDict.postln;
 							}
 						};
 						tempDict.postln;
