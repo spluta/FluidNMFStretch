@@ -36,13 +36,13 @@ Panning
 //it will say "Buffer UGen: no buffer data". THIS IS A LIE!
 //it will say "Processing Cancelled" but that just means it is done
 
-f.getMFCCChannel(0, (44100/5).asInteger)
-f.getMFCCChannel(1, (44100/5).asInteger)
+f.getMFCCChannel(0, (44100/5).asInteger, 9)
+f.getMFCCChannel(1, (44100/5).asInteger, 0)
 
 //f.getMFCCChannelParallel(1, 88200, 5)
 
 //the mfcc analysis only needs to happen once. after, the files can be loaded with loadFileDataSets
-f.loadFileDataSets
+f.loadFileDataSets((44100/5).asInteger)
 
 
 //the MFCC analysis is in a format of corresponding to one per NMF file, but we need the format to be in frames (1 file per 2 second chunk of data), so that channels can be panned in similar groups. Thus, the data needs to be put into frame format
@@ -54,11 +54,13 @@ f.saveFrameDataSetsFromFileChannel(1, (44100/5).asInteger)
 
 //on each frame, the algorithm clusters the N time-stretched NMF channels into timbrel similarity
 to do this, we must create clusters
-f.loadFrameDataSets
+f.loadFrameDataSets((44100/5).asInteger);
 f.createClusters(10, (44100/5).asInteger)
 
+f.createClusterChan(0)
 
-f.saveClusterData("clusters88200") //save these for future use - probably should add the mfcc chunk size to the file
+
+f.saveClusterData("clusters8820") //save these for future use - probably should add the mfcc chunk size to the file
 
 //PLAYBACK
 //now that the data has all been saved, we can load an run this at any point
@@ -68,7 +70,7 @@ s.options.numOutputBusChannels_(32);
 
 s.reboot
 f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav");
-(f.loadClusterData("clusters88200");
+(f.loadClusterData("clusters8820");
 f.setStretchFolder("Stretch100_24"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
 
 //give
@@ -78,7 +80,7 @@ f.makePanner(~vbapArray);)
 
 f.playAtSlice(50, nil, 20);
 
-f.panNRT(["/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_L.caf", "/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_R.caf"], "version1")
+f.panNRT(["/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_L.caf", "/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_R.caf"], "version2")
 
 f.folder
 

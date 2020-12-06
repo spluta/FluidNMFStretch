@@ -185,12 +185,12 @@ VBAPPlayback {
 			);
 		});
 	}*/
-	panNRT {|clusterData, inFile, outFile, lr|  //send me one side of the clusterData
+	panNRT {|clusterData, inFile, outFile, format, lr|  //send me one side of the clusterData
 		var buffers, nrtServer, vbapFile, panSlices, waitTime, nrtJam, panLoc, startTime;
 
 		startTime = Main.elapsedTime;
 
-		SynthDef("vbapSoundObject"++vbapSpeakerArray.numSpeakers, {|soundInBus = 0, noiseLag=24, buf, vbapBuf, azi = 0, ele=0, lag=0.1|
+/*		SynthDef("vbapSoundObject"++vbapSpeakerArray.numSpeakers, {|soundInBus = 0, noiseLag=24, buf, vbapBuf, azi = 0, ele=0, lag=0.1|
 			var aziNoise, eleNoise, out;
 
 			eleNoise = LFNoise1.kr(1/noiseLag).range(0,9);
@@ -200,6 +200,18 @@ VBAPPlayback {
 			out = VBAP.ar(vbapSpeakerArray.numSpeakers, out, vbapBuf, Lag.kr(azi, lag)+aziNoise, Lag.kr(ele, lag)+eleNoise);
 
 			Out.ar(0, out);
+		}).store;*/
+
+		SynthDef("vbapSoundObject"++vbapSpeakerArray.numSpeakers, {|noiseLag=24, buf, vbapBuf, azi = 0, ele=0, lag=0.1|
+			var aziNoise, eleNoise, out;
+
+			eleNoise = LFNoise1.kr(1/noiseLag).range(0,9);
+			aziNoise = LFNoise1.kr(1/noiseLag).range(-9,9);
+			out = DiskIn.ar(1, buf);
+
+			out = VBAP.ar(vbapSpeakerArray.numSpeakers, out, vbapBuf, Lag.kr(azi, lag)+aziNoise, Lag.kr(ele, lag)+eleNoise);
+
+			Out.ar(Rand(0,10), out);
 		}).store;
 
 		waitTime = soundFile.duration/clusterData.size;
@@ -213,10 +225,6 @@ VBAPPlayback {
 		);
 
 		// make the pan points for all the slices
-
-
-
-		//    make pan points
 		panSlices = clusterData.collect{|slice|
 			var tempDict = ();
 			slice.keys.do{|key|
@@ -238,37 +246,38 @@ VBAPPlayback {
 
 			nrtJam.add([0.0, vbapBuf.allocReadMsg(vbapFile, 0, -1, 1)]);
 
-			/*buffers = List.fill(files.size, {Buffer.new(nrtServer, 0, 1)});
+			buffers = List.fill(files.size, {Buffer.new(nrtServer, 65536, 1)});
 
 
-			buffers.do{|buffer, i| nrtJam.add([0.0, buffer.allocReadChannelMsg(files[i].fullPath, 0, -1, 1)])};*/
+			buffers.do{|buffer, i| nrtJam.add([0.0, buffer.allocMsg])};
+
+			buffers.do{|buffer, i| nrtJam.add([0.0, buffer.readMsg(files[i].fullPath, leaveOpen:true)])};
 
 			panSlices.postln;
 
 			panSlices[0]['0'].postln;
 
-			files.size.do{|i|
+			buffers.do{|buffer, i|
 				"count ".post; i.postln;
-				panLoc = vbapPoints.panPoints[panSlices[0][i.asSymbol].asInteger.postln;].postln;
+				panLoc = vbapPoints.panPoints[panSlices[0][i.asSymbol].asInteger];
 
 				nrtJam.add([0.0, Synth.basicNew("vbapSoundObject"++vbapSpeakerArray.numSpeakers, nrtServer, 1000+i).newMsg(args:
-					[\outBus, 0, \vbapBuf, vbapBuf, \azi, panLoc[0], \ele, panLoc[1], \lag, 0.1, \noiseLag, 20, \soundInBus, i])]);
+					[\outBus, 0, \vbapBuf, vbapBuf, \azi, panLoc[0], \ele, panLoc[1], \lag, 0.1, \noiseLag, 20, \buf, buffer])]);
 			};
 
 			panSlices.do{|item, i|
 				files.size.do{|synthNum|
-					panLoc = vbapPoints.panPoints[item[synthNum.asSymbol].asInteger.postln];
+					panLoc = vbapPoints.panPoints[item[synthNum.asSymbol].asInteger];
 					nrtJam.add([waitTime/2+(waitTime*i), ['n_set', 1000+synthNum, \azi, panLoc[0], \ele, panLoc[1], \lag, waitTime]]);
 				}
 			};
 
-			nrtJam.saveToFile(folder.parentPath++"scorefile"++lr);
+			nrtJam.saveToFile((folder.parentPath++"scorefile"++lr).postln);
 
 			nrtJam.recordNRT(
 				outputFilePath: outFile.standardizePath,
-				inputFilePath: inFile,
 				sampleRate: soundFile.sampleRate,
-				headerFormat: "W64",
+				headerFormat: format,
 				sampleFormat: "int24",
 				options: group.server.options,
 				duration: soundFile.duration+3,
