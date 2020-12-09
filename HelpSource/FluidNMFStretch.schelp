@@ -1,0 +1,292 @@
+title:: FluidNMFStretch
+summary:: NMF Diffusion of Time Stretched Source Over N-Channel VBAP System
+related:: TimeStretch, Classes/FluidBufNMF, Classes/FluidKMeans, Classes/FluidBufMFCC, Classes/VBAP, Classes/VBAPSpeakerArray
+categories::  UGens>FFT
+
+Description::
+Takes a mono or stereo audio file, uses FluidBufNMF to split the file into N*2 components, time stretches (optional) those componenents using the TimeStretch quark, analyses those components over time using FluidBufMFCC, clumps those components over time using FluidKMeans and finally diffuses those N*2 components over an M-channel speaker system using VBAP.
+
+WARNING: Requires the FluCoMa library (www.flucoma.org), developed at the University of Huddersfield, the TimeStretch quark (https://github.com/spluta/TimeStretch), developed by Sam Pluta, Alex Ness, and Jem Altieri, and the VBAP library, implemented by Scott Wilson.
+
+classmethods::
+
+
+method::new
+
+argument::server
+
+The server to be used. If the server is not booted, it will boot on init.
+
+argument::fileIn
+
+Path to the source stereo file for manipulation.
+
+argument::writeDir
+
+Path to the Directory where all files will be written. Default will be the folder where fileIn is located plus "Main/"
+
+
+method::nmf
+
+Takes the N channels of the input file and expands each channel out to M NMF components. The method creates a directory inside the writeDir, with separate folders for each channel of the original file.
+
+argument::components
+
+The number of channels to expand each channel of the stereo file to
+
+argument::action
+
+A function to be evaluated on completion.
+
+
+method::stretch
+
+This is optional, but recommended for good times. Takes each NMF component and time stretches that component using the TimeStretch algorithm. nmf needs to have already happened.
+
+argument::durMult
+
+How many times longer will the resulting file be. This uses the Ness Stretch, an expanded Paul Stretch, so I recommend 10, 100, or more times stretch. See the TimeStretch help file for more details.
+
+argument::stretchDestFolder
+
+The destination folder for the stretched files. The files will be organized by channel, just like the NMF files above
+
+argument::fftMax
+
+The largest FFT buffer size, for the lowest frequency data.
+
+argument:overlaps
+
+The default is 2, but 4 is also an option. 4 uses the default IFFT window. 2 uses the custom window defined by the PaulStretch algorithm.
+
+If given a 2 or 4, all of the FFT bands will use the same overlap. However, if the user gives an array of values, like [2,2,2,2,2,3,3,4,4], each band will have its own overlap setting.
+
+argument::numSplits
+
+	By default, the algorithm will split audio data into 9 frequency "octaves", starting with the first octave below 22050, then subsequent octaves down from there, leaving everything below 86hz to the largest buffer. However, some material, like classical orchestral music, gets swimmy above a certain register (or the swimminess that is welcome in pop becomes unwelcome). Here you can set the split to 8 or lower. Setting the number to 7, for instance, leaves us with a top FFT dealing with the frequency range above 2756 with a bin size of 1024 rather the audio range above 11025 with a bin size of 256, which is the default.
+
+
+method:getMFCCChannel
+
+Produces an MFCC analysis of each NMF component channel. Produces an "mfcc" directory, with a subdirectory corresponding to the frameLength argument. Inside this directory will be folders corresponding to each channel of the original file. Inside each folder will be json files corresponding to each NMF file created above.
+
+argument::chanNum
+
+The channel number of the analysis to perform.
+
+argument::frameLength
+
+The amount of audio to analyze per MFCC. Smaller numbers will correspond to faster panning in the resulting algorithm. Larger numbers will correspond to slower panning. (On a 44100 sr file and a 44100 frameLength, the pan points will be 1 second apart in the original file. If we stretch to 100x, the pan points will be 100 seconds apart).
+
+argument::counterStart
+
+If the analysis is interrupted at any point, it will have already saved the corresponding json files, so you can start on any file number. By default this is 0.
+
+
+method::loadMFCCChannel
+
+The mfcc analysis only needs to happen once. After this, the files can be loaded with loadMFCCChannel.
+
+argument::frameLength
+
+The directory that is loaded is named after the frameLength of the MFCC analysis, so this needs to be provided.
+
+
+method::saveFrameDataSetsFromMFCCChannel
+
+The MFCC analysis is in a format of corresponding to one per NMF file, but we need the format to be in frames (1 file per vertical frame across all of the NMF files), so that channels can be panned in similar groups. Thus, the data needs to be rotated into frame format.
+
+This really should happen one channel at a time, and depending on the size of the original file and the frameLength, you may need to reboot the server between each sorting. This may be dealing with very large datasets.
+
+In each analysis folder, this will add
+
+argument::chanNum
+
+The channel number of the analysis to perform.
+
+argument::frameLength
+
+The directory that is loaded is named after the frameLength of the MFCC analysis, so this needs to be provided.
+
+
+method::loadFrameDataSetsChan
+
+Once the data frames have been created, they can be loaded from the json files.
+
+argument::frameLength
+
+The directory that is loaded is named after the frameLength of the MFCC analysis, so this needs to be provided.
+
+method::createClusterChan
+
+Uses KMeans on the FrameDataSetsChan to clump each frame of the MFCC analysis into N clusters, which will be panned together.
+
+argument::chanNum
+
+The channel number of the analysis to perform.
+
+argument::numClusters
+
+The number of clusters to the extracted.
+
+method::saveClusterChan
+
+argument::chanNum
+
+The channel number of the analysis to perform.
+
+argument::fileName
+
+The name of the file to be saved into the Main directory
+
+method::setStretchFolder
+
+Sets the stretch folder to be used in the Panning algorithm
+
+argument::folderName
+
+The name of the folder. Should contain additional folders per each channel, each with all of the stretched files inside.
+
+
+method::makePanner
+
+Creates the VBAP panning system used to pan the sound files
+
+argument::vbapSpeakerArray
+
+The VBAPSpeakerArray used in the panning
+
+argument::vbapPanPointsIn
+
+The destination VBAPPanPoints for the panning algorithm. This provides the destination points for each Frame in the analysis. At each frame in playback, a new destination panning point is chosen per sound file based on how it has been clustered together by KMeans.
+
+method::playAtFrame
+
+argument::frameNum
+
+At which frame to start playback.
+
+argument::chans
+
+An array of which original file channels to play back. If nil, it will default to all channels.
+
+argument::outBus
+
+The lowest output bus channel in the out array. Output will have the number of channels in the VBAPSpeakerArray.
+
+method::panNRT
+
+Render an N channel audio file in Non-Realtime per input channel. The file will be rendered to the current
+
+argument::outFile
+
+The name of the output file. It will be rendered into the folder where the Stretched Audio Files are located.
+
+argument::format
+
+The format of the output file (and also the extension). For large files (above 4 gigs) I recommend caf or w64.
+
+argument::chans
+
+An array of which original file channels to play back. If nil, it will default to all channels.
+
+argument::everyNPoints
+
+A number higher than 1 will use panning that skips frames of information. Default is 1.
+
+
+Examples::
+
+FluidNMFStretch is a process that takes much time and many reboots. I recommend the process as outlined below. Skipping steps can create errors, especially with larger audio files using smaller frame durations. There is just a ton of data. A large amount of hard drive space is also needed. For instance, a 2 second audio file converted to 50 NMF channels and time stretched to 100x will result in a 3.36 Gig data folder. A 3min30sec song will be over 400 gigs.
+
+So, always run one line at a time and rebooting the server often is kind of necessary.
+
+Loading the files, nmf'ing and stretching
+
+Step 1 - Load the source sound file and make the NMF Component Files
+
+code::
+~file = "/Volumes/T2/Shorty/Shorty.wav";  //the file to be used throughout the process - place your own file here
+
+f = FluidNMFStretch(s, ~file); //will boot the server if not already booted
+
+f.nmf(50); //this is likely going to take a bit of time, especially with longer files.
+::
+
+Step 2 - Stretch each of the separate NMF channels and save these files into the designated folder
+
+code::
+s.reboot;
+f = FluidNMFStretch(s, ~file);
+
+//this has been my best overlaps setting - 4 only for the top 2 octaves
+//this can take some serious time and will boot channels*nmfComponents servers to run...
+f.stretch(100, "Stretch100", 65536, [2,2,2,2,2,2,2,4,4], 9);  //will say done stretchin! when done
+::
+
+NOW THE ANALYSIS
+
+Step 3 - Do the MFCC analysis per NMF Component. This analysis is stored as json files
+
+and
+
+Step 4 - Convert the MFCC analysis files per NMF component to vertical analyses per frame of time
+
+and
+
+Step 5 - Create the clusters of sound files for each audio frame
+
+code::
+//do the channels separately. for larger files this is especially important, as system resources will disappear
+//files will be saved to corresponding folders
+s.reboot;
+f = FluidNMFStretch(s, ~file);
+f.getMFCCChannel(0, 8820, 0)  //8820 signifies the number of samples per frame of analysis
+//or f.loadMFCCChannel if the analysis already exists
+f.saveFrameDataSetsFromMFCCChannel(0, 8820);  //convert the linear MFCC data to vertical frames
+
+//create the clusters and save them
+f.createClusterChan(0, 10);
+f.saveClusterChan(0, "clusters8820_0");
+
+
+s.reboot;
+f = FluidNMFStretch(s, ~file);
+f.getMFCCChannel(1, 8820, 0)
+f.saveFrameDataSetsFromMFCCChannel(1, 8820)
+f.createClusterChan(1, 10);
+f.saveClusterChan(1, "clusters8820_1");
+::
+
+
+Step 6 - Make some Sounds!
+
+code::
+s.reboot;
+f = FluidNMFStretch(s, ~file);
+(
+//run this as a block
+//load up all the necessary information
+
+f.loadClusterData("clusters8820");
+f.setStretchFolder("Stretch100"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
+
+//create a VBAP array based on your setup
+~vbapArray = VBAPSpeakerArray.new(3, [[-30, 0], [30, 0], [-90, 0], [90, 0], [-150, 0], [150, 0], [-45, 45], [45, 45], [-135, 45], [135, 45]]);
+
+//create panpoints that are the destination points that the files will move toward at each frame
+//does need to have the same number of channels as the Cluster analysis, but does not need to correspond in number of channels to ~vbapArray
+~panPoints = List.newClear(0);
+5.do{|i| ~panPoints.add([18+(36*i), 0])};
+3.do{|i| ~panPoints.add([45+(30*i), 25])};
+2.do{|i| ~panPoints.add([45+(90*i), 45])};
+
+f.makePanner(~vbapArray, [VBAPPanPoints(~panPoints*[[-1,1]]), VBAPPanPoints(~panPoints)])
+)
+//start playing at any frame
+f.playAtFrame(0, [0,1], 0);
+
+//or render to an N channel file via NRT rendering - it will render to the parent folder of all the stretch files
+f.panNRT("version1")
+::
+

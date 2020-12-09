@@ -94,127 +94,24 @@ VBAPPlayback {
 		"".postln;
 	}
 
-
-
-/*panNRT {|clusterData, outFile, lr|  //send me one side of the clusterData
-		var buffers, nrtServer, vbapFile, panSlices, waitTime, nrtJam, panLoc;
-
-		SynthDef("vbapSoundObject"++vbapSpeakerArray.numSpeakers, {|noiseLag=24, buf, vbapBuf, azi = 0, ele=0, lag=0.1|
-			var aziNoise, eleNoise, out;
-
-			eleNoise = LFNoise1.kr(1/noiseLag).range(0,9);
-			aziNoise = LFNoise1.kr(1/noiseLag).range(-9,9);
-			out = DiskIn.ar(1, buf);
-
-			//out = VBAP.ar(vbapSpeakerArray.numSpeakers, out, vbapBuf, Lag.kr(azi, lag)+aziNoise, Lag.kr(ele, lag)+eleNoise);
-
-			Out.ar(Rand(0,10), out);
-		}).store;
-
-		waitTime = soundFile.duration/clusterData.size;
-
-		if(outFile == nil){outFile = folder.parentPath++"outfile"++".wav"};
-
-		nrtServer = Server(("nrt"++NRT_Server_ID.next).asSymbol,
-			options: Server.local.options
-			.numOutputBusChannels_(vbapSpeakerArray.numSpeakers)
-			.numInputBusChannels_(10)
-		);
-
-		// make the pan points for all the slices
-
-
-
-		//    make pan points
-		panSlices = clusterData.collect{|slice|
-			var tempDict = ();
-			slice.keys.do{|key|
-				slice[key].do{|item|
-					tempDict.put(item.asInteger.asSymbol, key);
-				}
-			};
-			tempDict
-		};
-
-		nrtJam = Score.new();
-
-		vbapFile = folder.parentPath++"vbapTemp"++lr++".wav";
-		vbapFile.postln;
-		vbapBuf.write(vbapFile, completionMessage:{
-			"bufferWritten".postln;
-
-			vbapBuf = Buffer.new(nrtServer, 0, 1);
-
-			nrtJam.add([0.0, vbapBuf.allocReadMsg(vbapFile, 0, -1, 1)]);
-
-			buffers = List.fill(files.size, {Buffer.new(nrtServer, 0, 1)});
-
-			CtkBuffer
-
-			buffers.do{|buffer, i| nrtJam.add([0.0, buffer.allocReadChannelMsg(files[i].fullPath, 0, -1, 1)])};
-
-			panSlices.postln;
-
-			panSlices[0]['0'].postln;
-
-			buffers.do{|buffer, i|
-				"count ".post; i.postln;
-				panLoc = vbapPoints.panPoints[panSlices[0][i.asSymbol].asInteger.postln;].postln;
-
-				nrtJam.add([0.0, Synth.basicNew("vbapSoundObject"++vbapSpeakerArray.numSpeakers, nrtServer, 1000+i).newMsg(args:
-					[\outBus, 0, \vbapBuf, vbapBuf, \azi, panLoc[0], \ele, panLoc[1], \lag, 0.1, \noiseLag, 20, \buf, buffer])]);
-			};
-
-			panSlices.do{|item, i|
-				buffers.size.do{|synthNum|
-					panLoc = vbapPoints.panPoints[item[synthNum.asSymbol].asInteger.postln];
-					nrtJam.add([waitTime/2+(waitTime*i), ['n_set', 1000+synthNum, \azi, panLoc[0], \ele, panLoc[1], \lag, waitTime]]);
-				}
-			};
-
-			nrtJam.saveToFile(folder.parentPath++"scorefile"++lr);
-
-			nrtJam.recordNRT(
-				outputFilePath: outFile.standardizePath,
-				sampleRate: soundFile.sampleRate,
-				headerFormat: "caf",
-				sampleFormat: "int24",
-				options: group.server.options,
-				duration: 300,//soundFile.duration+3,
-				action: {"multiChannel File written!".postln}
-			);
-		});
-	}*/
-	panNRT {|clusterData, inFile, outFile, format, lr|  //send me one side of the clusterData
+	panNRT {|clusterData, outFile, format, lr|  //send me one side of the clusterData
 		var buffers, nrtServer, vbapFile, panSlices, waitTime, nrtJam, panLoc, startTime;
 
 		startTime = Main.elapsedTime;
 
-/*		SynthDef("vbapSoundObject"++vbapSpeakerArray.numSpeakers, {|soundInBus = 0, noiseLag=24, buf, vbapBuf, azi = 0, ele=0, lag=0.1|
-			var aziNoise, eleNoise, out;
-
-			eleNoise = LFNoise1.kr(1/noiseLag).range(0,9);
-			aziNoise = LFNoise1.kr(1/noiseLag).range(-9,9);
-			out = SoundIn.ar(soundInBus);
-
-			out = VBAP.ar(vbapSpeakerArray.numSpeakers, out, vbapBuf, Lag.kr(azi, lag)+aziNoise, Lag.kr(ele, lag)+eleNoise);
-
-			Out.ar(0, out);
-		}).store;*/
-
 		SynthDef("vbapSoundObject"++vbapSpeakerArray.numSpeakers, {|noiseLag=24, buf, vbapBuf, azi = 0, ele=0, lag=0.1|
 			var aziNoise, eleNoise, out;
 
-			eleNoise = LFNoise1.kr(1/noiseLag).range(0,9);
-			aziNoise = LFNoise1.kr(1/noiseLag).range(-9,9);
+			eleNoise = LFNoise1.kr(1/noiseLag).range(-9,5);
+			aziNoise = LFNoise1.kr(1/noiseLag).range(-5,5);
 			out = DiskIn.ar(1, buf);
 
-			out = VBAP.ar(vbapSpeakerArray.numSpeakers, out, vbapBuf, Lag.kr(azi, lag)+aziNoise, Lag.kr(ele, lag)+eleNoise);
+			out = VBAP.ar(vbapSpeakerArray.numSpeakers, out, vbapBuf, (Lag.kr(azi, lag)+aziNoise), (Lag.kr(ele, lag)+eleNoise).clip(0, 90));
 
-			Out.ar(Rand(0,10), out);
+			Out.ar(0, out);
 		}).store;
 
-		waitTime = soundFile.duration/clusterData.size;
+
 
 		if(outFile == nil){outFile = folder.parentPath++"outfile"++".wav"};
 
@@ -235,19 +132,22 @@ VBAPPlayback {
 			tempDict
 		};
 
+		waitTime = soundFile.duration/(clusterData.size);
+
 		nrtJam = Score.new();
 
 		vbapFile = folder.parentPath++"vbapTemp"++lr++".wav";
 		vbapFile.postln;
 		vbapBuf.write(vbapFile, headerFormat:"wav", sampleFormat: "float", completionMessage:{
+			var nrtVBAPBuf = Buffer.new(nrtServer, 0, 1);
+
 			"bufferWritten".postln;
 
-			vbapBuf = Buffer.new(nrtServer, 0, 1);
+			nrtVBAPBuf = Buffer.new(nrtServer, 0, 1);
 
-			nrtJam.add([0.0, vbapBuf.allocReadMsg(vbapFile, 0, -1, 1)]);
+			nrtJam.add([0.0, nrtVBAPBuf.allocReadMsg(vbapFile, 0, -1, 1)]);
 
 			buffers = List.fill(files.size, {Buffer.new(nrtServer, 65536, 1)});
-
 
 			buffers.do{|buffer, i| nrtJam.add([0.0, buffer.allocMsg])};
 
@@ -259,16 +159,23 @@ VBAPPlayback {
 
 			buffers.do{|buffer, i|
 				"count ".post; i.postln;
-				panLoc = vbapPoints.panPoints[panSlices[0][i.asSymbol].asInteger];
+				vbapPoints.postln;
 
+				panLoc = vbapPoints.panPoints[panSlices[0][i.asSymbol].asInteger];
+				panLoc.postln;
+				//if(i==0){
 				nrtJam.add([0.0, Synth.basicNew("vbapSoundObject"++vbapSpeakerArray.numSpeakers, nrtServer, 1000+i).newMsg(args:
-					[\outBus, 0, \vbapBuf, vbapBuf, \azi, panLoc[0], \ele, panLoc[1], \lag, 0.1, \noiseLag, 20, \buf, buffer])]);
+					[\outBus, 0, \vbapBuf, nrtVBAPBuf, \azi, panLoc[0], \ele, panLoc[1], \lag, 0.1, \noiseLag, 20, \buf, buffer])]);
+				//}
 			};
 
 			panSlices.do{|item, i|
 				files.size.do{|synthNum|
+
 					panLoc = vbapPoints.panPoints[item[synthNum.asSymbol].asInteger];
+					//if(synthNum==0){
 					nrtJam.add([waitTime/2+(waitTime*i), ['n_set', 1000+synthNum, \azi, panLoc[0], \ele, panLoc[1], \lag, waitTime]]);
+					//}
 				}
 			};
 
@@ -290,16 +197,20 @@ VBAPPlayback {
 VBAPPanPoints {
 	var <>pan, <>panPoints;
 
-	*new {|pan=1|
-		^super.new.pan_(pan).init;
+	*new {|panPoints, pan=1|
+		^super.new.pan_(pan).panPoints_(panPoints).init;
 	}
 
 	init {
-		panPoints = List.newClear(0);
-		5.do{|i| panPoints.add([18+(36*i)*pan, 0])};
-		3.do{|i| panPoints.add([30+(60*i)*pan, 36])};
-		2.do{|i| panPoints.add([45+(90*i)*pan, 72])};
+		if(panPoints==nil){
+			panPoints = List.newClear(0);
+			5.do{|i| panPoints.add([18+(36*i)*pan, 0])};
+			3.do{|i| panPoints.add([30+(60*i)*pan, 25])};
+			2.do{|i| panPoints.add([45+(90*i)*pan, 50])};
+		}
 	}
+
+
 
 	swapPoints {|p1, p2|
 		var temp;

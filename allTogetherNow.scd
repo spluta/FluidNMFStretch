@@ -1,5 +1,7 @@
 s.reboot
 
+FluidKMeans
+
 //create an instance of FluidNMFStretch
 //probably best to reboot the server before loading
 f = FluidNMFStretch(s, "/Volumes/StretchFiles/Mahler5Chailly/Mahler.wav")
@@ -10,8 +12,7 @@ f = FluidNMFStretch(s, "/Volumes/Samsung_T5/Mahler3OhMench/Mahler3.wav")
 
 f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav")
 
-//makes the necessary subfolders to hold the NMF Channels and the MFCC Channels
-f.makeFolders;
+f = FluidNMFStretch(s, "/Volumes/T2/Shorty/Shorty.wav", "/Volumes/T2/FluidNMFOutDir/")
 
 //does the nmf component analysis, saves the N channel files in the Main folder and places each component of each channel of the NMF analysis in its own folder for inside the Chans folder. So, if the analyzed file is stereo and we analyze for 50 components, there will be 2 folders in the Chans folder, each with 50 files in them
 f.nmf(50);  //this may take a while!!!
@@ -25,7 +26,7 @@ f.stretch(100, "Stretch100", 65536, 9, 2);
 
 //the user can also supply an array of overlap values, one per frequency band, so that each band of the frequency spectrum has its own overlap setting
 //see the TimeStretch help file for more information
-f.stretch(100, "Stretch100_24", 65536, 9, [2,2,2,2,2,2,2,4,4])
+f.stretch(100, "Stretch100_24", 65536, [2,2,2,2,2,2,2,4,4], 9)
 
 Panning
 
@@ -36,7 +37,8 @@ Panning
 //it will say "Buffer UGen: no buffer data". THIS IS A LIE!
 //it will say "Processing Cancelled" but that just means it is done
 
-f.getMFCCChannel(0, (44100/5).asInteger, 9)
+f.getMFCCChannel(0, (44100/5).asInteger, 0)
+//now do channel 1
 f.getMFCCChannel(1, (44100/5).asInteger, 0)
 
 //f.getMFCCChannelParallel(1, 88200, 5)
@@ -44,6 +46,7 @@ f.getMFCCChannel(1, (44100/5).asInteger, 0)
 //the mfcc analysis only needs to happen once. after, the files can be loaded with loadFileDataSets
 f.loadFileDataSets((44100/5).asInteger)
 
+f.fileDataSets[1].do{|item| item.size({|size| size.postln})}
 
 //the MFCC analysis is in a format of corresponding to one per NMF file, but we need the format to be in frames (1 file per 2 second chunk of data), so that channels can be panned in similar groups. Thus, the data needs to be put into frame format
 f.saveFrameDataSetsFromFile
@@ -55,10 +58,15 @@ f.saveFrameDataSetsFromFileChannel(1, (44100/5).asInteger)
 //on each frame, the algorithm clusters the N time-stretched NMF channels into timbrel similarity
 to do this, we must create clusters
 f.loadFrameDataSets((44100/5).asInteger);
-f.createClusters(10, (44100/5).asInteger)
 
-f.createClusterChan(0)
+f.loadFrameDataSetsChan(0, (44100/5).asInteger);
+f.createClusterChan(0, 10)
+f.saveClusterChan(0, "clusters8820_0");
 
+
+f.loadFrameDataSetsChan(1, (44100/5).asInteger);
+f.createClusterChan(1, 10)
+f.saveClusterChan(1, "clusters8820_1");
 
 f.saveClusterData("clusters8820") //save these for future use - probably should add the mfcc chunk size to the file
 
@@ -71,28 +79,21 @@ s.options.numOutputBusChannels_(32);
 s.reboot
 f = FluidNMFStretch(s, "/Volumes/T2/NeverReallyOver/NeverReallyOver.wav");
 (f.loadClusterData("clusters8820");
-f.setStretchFolder("Stretch100_24"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
+f.setStretchFolder("Stretch100"); //choose the correct Stretch folder inside the Main folder (there can be multiple)
 
 //give
-~vbapArray = VBAPSpeakerArray.new(3, [[-30, 0], [30, 0], [-90, 0], [90, 0], [-150, 0], [150, 0], [-45, 30], [45, 30], [-135, 30], [135, 30]]);
-f.makePanner(~vbapArray);)
+~vbapArray = VBAPSpeakerArray.new(3, [[-30, 0], [30, 0], [-90, 0], [90, 0], [-150, 0], [150, 0], [-45, 45], [45, 45], [-135, 45], [135, 45]]);
 
+~panPoints = List.newClear(0);
+5.do{|i| ~panPoints.add([18+(36*i), 0])};
+3.do{|i| ~panPoints.add([45+(30*i), 35])};
+2.do{|i| ~panPoints.add([45+(90*i), 75])};
 
-f.playAtSlice(50, nil, 20);
+f.makePanner(~vbapArray, [VBAPPanPoints(~panPoints*[[-1,1]]), VBAPPanPoints(~panPoints)])
+)
 
-f.panNRT(["/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_L.caf", "/Volumes/T2/NeverReallyOver/Main/Stretch100_24/NeverReallyOver_50_R.caf"], "version2")
+f.clusterData[1]
 
-f.folder
+f.playAtSlice(0, [1], 0);
 
-~vbapArray.numSpeakers
-
-//todo!!!
-deal with panning
---isolating groups
---moving pan points
-
-f.clusterData[0].do{|item, i| "".postln; i.postln; item.keysDo{|key|
-	if(item[key].indexOfEqual("0002")!=nil){key.postln;}
-
-}}
-
+f.panNRT("version1")
