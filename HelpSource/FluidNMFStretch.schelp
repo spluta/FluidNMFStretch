@@ -8,6 +8,8 @@ Takes a mono or stereo audio file, uses FluidBufNMF to split the file into N*2 c
 
 WARNING: Requires the FluCoMa library (www.flucoma.org), developed at the University of Huddersfield, the TimeStretch quark (https://github.com/spluta/TimeStretch), developed by Sam Pluta, Alex Ness, and Jem Altieri, and the VBAP library, implemented by Scott Wilson.
 
+The example at the bottom walks you through the process. It may be the best place to start.
+
 classmethods::
 
 
