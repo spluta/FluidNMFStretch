@@ -61,12 +61,15 @@ argument:overlaps
 
 The default is 2, but 4 is also an option. 4 uses the default IFFT window. 2 uses the custom window defined by the PaulStretch algorithm.
 
-If given a 2 or 4, all of the FFT bands will use the same overlap. However, if the user gives an array of values, like [2,2,2,2,2,3,3,4,4], each band will have its own overlap setting.
+If given a 2 or 4, all of the FFT bands will use the same overlap. However, if the user gives an array of values, like [2,2,2,2,2,2,2,4,4], each band will have its own overlap setting.
 
 argument::numSplits
 
 	By default, the algorithm will split audio data into 9 frequency "octaves", starting with the first octave below 22050, then subsequent octaves down from there, leaving everything below 86hz to the largest buffer. However, some material, like classical orchestral music, gets swimmy above a certain register (or the swimminess that is welcome in pop becomes unwelcome). Here you can set the split to 8 or lower. Setting the number to 7, for instance, leaves us with a top FFT dealing with the frequency range above 2756 with a bin size of 1024 rather the audio range above 11025 with a bin size of 256, which is the default.
 
+argument::wintype
+
+	See the TimeStretch help file. For overlaps of 2, chooses between sine (0), paulstretch(1), and new paulstretch(2) windows. 1 is default.
 
 method:getMFCCChannel
 
@@ -223,7 +226,7 @@ f = FluidNMFStretch(s, ~file);
 
 //this has been my best overlaps setting - 4 only for the top 2 octaves
 //this can take some serious time and will boot channels*nmfComponents servers to run...
-f.stretch(100, "Stretch100", 65536, [2,2,2,2,2,2,2,4,4], 9);  //will say done stretchin! when done
+f.stretch(100, "Stretch100", 65536, 2, 9);  //will say done stretchin! when done
 ::
 
 NOW THE ANALYSIS
