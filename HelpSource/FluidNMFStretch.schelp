@@ -59,7 +59,7 @@ The largest FFT buffer size, for the lowest frequency data.
 
 argument:overlaps
 
-The default is 2, but 4 is also an option. 4 uses the default IFFT window. 2 uses the custom window defined by the PaulStretch algorithm.
+The default is 2, but 4 is also an option. 4 uses the sine IFFT window. 2 uses the custom window defined by the given in wintype below.
 
 If given a 2 or 4, all of the FFT bands will use the same overlap. However, if the user gives an array of values, like [2,2,2,2,2,2,2,4,4], each band will have its own overlap setting.
 
@@ -69,9 +69,14 @@ argument::numSplits
 
 argument::wintype
 
-	See the TimeStretch help file. For overlaps of 2, chooses between sine (0), paulstretch(1), and new paulstretch(2) windows. 1 is default.
+	See the TimeStretch help file. For the IFFT, choose between the default (0) SuperCollider Sine window, (1) the classic paulstretch window (2) and warped sine wave that is a sine wave. wintype for an overlap of 4 will always be a Sine window.
 
-method:getMFCCChannel
+argument::sinePower
+
+	See the TimeStretch help file. An argument used in collaboration with wintype 2 only. This will warp the sine wave envelope over the IFFT window by a power of this value. Thus the window will be a sine^sinePower instead of just a sine. Default is 1.2.
+
+
+method::getMFCCChannel
 
 Produces an MFCC analysis of each NMF component channel. Produces an "mfcc" directory, with a subdirectory corresponding to the frameLength argument. Inside this directory will be folders corresponding to each channel of the original file. Inside each folder will be json files corresponding to each NMF file created above.
 

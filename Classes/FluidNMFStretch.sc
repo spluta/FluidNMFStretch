@@ -105,7 +105,7 @@ FluidNMFStretch {
 		};
 	}
 
-	stretch {|durMult=12, stretchDestFolder="Stretch", fftMax=65536, overlaps=2, numSplits=9, wintype=1|
+	stretch {|durMult=12, stretchDestFolder="Stretch", fftMax=65536, overlaps=2, numSplits=9, wintype=0, sinePower=1.2|
 		var inFiles, x, chanFolders, folder;
 		//[folderOrFile, durMult, stretchFolder].postln;
 		{
@@ -125,7 +125,7 @@ FluidNMFStretch {
 				inFiles.do{|inFile,i|
 					var outFile;
 					outFile = stretchFolder++folder.folderName++"/"++(inFile.fileName);
-					TimeStretch.stretch(inFile.fullPath, outFile, durMult, fftMax, overlaps, numSplits, wintype);
+					TimeStretch.stretch(inFile.fullPath, outFile, durMult, fftMax, overlaps, numSplits, wintype, sinePower);
 				}
 			}
 	}.fork}
